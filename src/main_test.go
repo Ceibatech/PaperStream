@@ -112,3 +112,21 @@ func TestAFileWithoutAnIdIsNeverSent(t *testing.T) {
 		t.Fatal("le fichier doit être écarté")
 	}
 }
+
+func TestTheClonedFoldersAreUsedByDefault(t *testing.T) {
+	dir := t.TempDir()
+	root = dir
+	cfg = config{}
+	defaults(&cfg.InboxDir, "numerisation", "1-a-envoyer")
+	defaults(&cfg.SentDir, "numerisation", "2-envoyes")
+	defaults(&cfg.LogFile, "journal", "mulcv-depot.log")
+	if cfg.InboxDir != filepath.Join(dir, "numerisation", "1-a-envoyer") || cfg.SentDir != filepath.Join(dir, "numerisation", "2-envoyes") ||
+		cfg.LogFile != filepath.Join(dir, "journal", "mulcv-depot.log") {
+		t.Fatalf("emplacements : %+v", cfg)
+	}
+	cfg.SentDir = "D:\\autre"
+	defaults(&cfg.SentDir, "numerisation", "2-envoyes")
+	if cfg.SentDir != "D:\\autre" {
+		t.Fatal("une valeur configurée ne doit pas être remplacée")
+	}
+}

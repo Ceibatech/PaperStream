@@ -1,0 +1,2 @@
+postes\poste-1.json et poste-2.json : modeles fournis par le depot.
+mulcv-depot.json : configuration du poste, ecrite par installer.cmd (contient le secret, jamais versionne).

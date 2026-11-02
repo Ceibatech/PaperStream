@@ -1,0 +1,5 @@
+{
+  "tokenUrl": "https://mulcv-kc-dev.ceiba-analytics.com/auth/realms/mulcv/protocol/openid-connect/token",
+  "clientId": "mulcv-depot-poste1",
+  "apiBase": "https://mulcv-dev.ceiba-analytics.com/api/v1"
+}

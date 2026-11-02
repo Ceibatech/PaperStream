@@ -1,2 +1,6 @@
-mulcv-depot.json
+config/mulcv-depot.json
+numerisation/*/*
+!numerisation/*/LISEZMOI.txt
+journal/*
+!journal/LISEZMOI.txt
 dist/

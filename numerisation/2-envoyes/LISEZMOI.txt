@@ -1,0 +1,3 @@
+Fichiers deposes avec succes dans MULCV (copie locale conservee).
+Dans MULCV : Scan / Production / <zone> / <carton> / <dossier>.
+Ce dossier peut etre vide de temps en temps.

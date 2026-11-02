@@ -4,8 +4,17 @@
 // par PaperStream). Le backend MULCV retrouve ce dossier et y dépose le fichier ;
 // le service OCR du dossier Scan prend ensuite le relais.
 //
-//	mulcv-depot.exe <fichier> [fichiers...]   appelé par PaperStream « Autre application » avec %f
-//	mulcv-depot.exe -watch <dossier>          surveille un dossier de sortie PaperStream
+// Arborescence attendue (le dépôt Git cloné dans C:\MULCV) :
+//
+//	C:\MULCV\bin\mulcv-depot.exe
+//	C:\MULCV\config\mulcv-depot.json          écrit par installer.cmd
+//	C:\MULCV\numerisation\1-a-envoyer\       sortie de PaperStream (mode dossier)
+//	C:\MULCV\numerisation\2-envoyes\         fichiers déposés dans MULCV
+//	C:\MULCV\numerisation\3-erreurs\         fichiers refusés + .txt de la raison
+//	C:\MULCV\journal\mulcv-depot.log
+//
+//	mulcv-depot.exe <fichier> [fichiers...]   appelé par PaperStream « Other App » avec %f
+//	mulcv-depot.exe -watch                    surveille numerisation\1-a-envoyer
 //	mulcv-depot.exe -test                     vérifie la configuration et la connexion
 package main
 
@@ -35,6 +44,7 @@ type config struct {
 	NamePattern  string `json:"namePattern"`
 	SentDir      string `json:"sentDir"`
 	ErrorDir     string `json:"errorDir"`
+	InboxDir     string `json:"inboxDir"`
 	LogFile      string `json:"logFile"`
 }
 
@@ -52,7 +62,7 @@ var (
 
 func main() {
 	configPath := flag.String("config", "", "chemin du fichier de configuration (défaut : mulcv-depot.json à côté du programme)")
-	watch := flag.String("watch", "", "dossier à surveiller")
+	watch := flag.Bool("watch", false, "surveiller numerisation\\1-a-envoyer")
 	test := flag.Bool("test", false, "vérifier la configuration et la connexion")
 	flag.Parse()
 
@@ -65,8 +75,8 @@ func main() {
 			fail("Connexion refusée : %v", err)
 		}
 		log.Printf("Configuration correcte, connexion à MULCV établie.")
-	case *watch != "":
-		watchDir(*watch)
+	case *watch:
+		watchDir(cfg.InboxDir)
 	default:
 		if flag.NArg() == 0 {
 			fail("Indiquez un fichier, -watch <dossier> ou -test.")
@@ -83,13 +93,17 @@ func main() {
 	}
 }
 
+// root est le dossier qui contient bin\ : C:\MULCV quand le dépôt y est cloné.
+var root string
+
 func load(path string) error {
+	exe, err := os.Executable()
+	if err != nil {
+		return err
+	}
+	root = filepath.Dir(filepath.Dir(exe))
 	if path == "" {
-		exe, err := os.Executable()
-		if err != nil {
-			return err
-		}
-		path = filepath.Join(filepath.Dir(exe), "mulcv-depot.json")
+		path = filepath.Join(root, "config", "mulcv-depot.json")
 	}
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -114,15 +128,17 @@ func load(path string) error {
 	if cfg.ClientID == "" || cfg.ClientSecret == "" {
 		return errors.New("clientId et clientSecret sont obligatoires")
 	}
-	for _, dir := range []string{cfg.SentDir, cfg.ErrorDir} {
-		if dir == "" {
-			return errors.New("sentDir et errorDir sont obligatoires")
-		}
+	// Emplacements par défaut : ceux du dépôt cloné, déjà présents.
+	defaults(&cfg.InboxDir, "numerisation", "1-a-envoyer")
+	defaults(&cfg.SentDir, "numerisation", "2-envoyes")
+	defaults(&cfg.ErrorDir, "numerisation", "3-erreurs")
+	defaults(&cfg.LogFile, "journal", "mulcv-depot.log")
+	for _, dir := range []string{cfg.InboxDir, cfg.SentDir, cfg.ErrorDir, filepath.Dir(cfg.LogFile)} {
 		if err := os.MkdirAll(dir, 0o750); err != nil {
 			return err
 		}
 	}
-	if cfg.LogFile != "" {
+	{
 		file, err := os.OpenFile(cfg.LogFile, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o640)
 		if err != nil {
 			return err
@@ -130,6 +146,12 @@ func load(path string) error {
 		log.SetOutput(io.MultiWriter(os.Stderr, file))
 	}
 	return nil
+}
+
+func defaults(value *string, parts ...string) {
+	if *value == "" {
+		*value = filepath.Join(append([]string{root}, parts...)...)
+	}
 }
 
 func watchDir(dir string) {

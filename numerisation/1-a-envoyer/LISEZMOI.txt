@@ -1,0 +1,4 @@
+Fichiers numerises en attente d'envoi vers MULCV.
+Nom attendu : l'identifiant du dossier (valeur du QR), par exemple DOS-000456.pdf.
+Mode Other App : PaperStream envoie directement, ce dossier reste vide.
+Mode Folder    : PaperStream depose ici et la surveillance (installer.cmd, option Surveillance) envoie.
