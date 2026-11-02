@@ -2,77 +2,86 @@
 
 Dépôt automatique des documents numérisés avec **PaperStream Capture** dans **MULCV**.
 
-Chaque dossier physique porte un QR code avec son identifiant GeoArchiv. PaperStream
-sépare les dossiers sur ce QR, nomme chaque PDF avec la valeur lue, puis lance
-`mulcv-depot.exe`. Le programme envoie le fichier à MULCV, qui le range dans le
-dossier transféré portant cet identifiant :
+## Installer un poste (5 minutes)
 
-```
-MULCV / Documents / Scan / Production / <zone> / <carton> / <dossier>
-```
-
-Le service OCR du dossier Scan analyse ensuite le document, puis l'archiviste le valide.
-
-## Les deux postes
-
-| Poste | Compte technique Keycloak | Configuration |
-|---|---|---|
-| Poste 1 | `mulcv-depot-poste1` | `postes/poste-1.json` |
-| Poste 2 | `mulcv-depot-poste2` | `postes/poste-2.json` |
-
-Chaque poste a son propre compte : le journal de MULCV indique quel poste a déposé
-chaque document, et un poste perdu se révoque sans arrêter l'autre.
-
-## Préparation (une fois, administrateur)
-
-1. **Keycloak**, realm `mulcv` → Clients → *Import client* : `keycloak/mulcv-depot-poste1.client.json`
-   puis `poste2`. Noter le secret de chacun (onglet *Credentials*).
-2. **Backend MULCV** : `TRANSFERS_SCANNER_CLIENTS=mulcv-depot-poste1,mulcv-depot-poste2`.
-3. **Share** → site MULCV → *Membres du site* : ajouter `service-account-mulcv-depot-poste1`
-   et `…-poste2` comme **Collaborateurs** (ils apparaissent après le premier `-test`).
-
-## Installation sur chaque poste
-
-1. Télécharger `mulcv-paperstream.zip` (onglet *Releases*, ou artefact de la dernière
-   exécution de la CI) et le décompresser.
-2. Ouvrir PowerShell **avec le compte Windows de l'opérateur du poste**, dans le dossier décompressé :
-   ```powershell
-   powershell -ExecutionPolicy Bypass -File install.ps1 -Poste 1   # ou -Poste 2
+1. **Cloner** le dépôt sur le poste, par exemple dans `C:\MULCV\PaperStream` :
    ```
-   Le script crée `C:\MULCV`, demande le secret du poste sans l'afficher, protège
-   la configuration (lisible par l'opérateur et les administrateurs seulement)
-   et teste la connexion.
+   git clone https://github.com/Ceibatech/PaperStream.git C:\MULCV\PaperStream
+   ```
+2. **Récupérer le secret du poste** auprès de l'administrateur. Il le lit sur le serveur avec
+   `cat /opt/ceiba/keycloak/secrets/mulcv-depot-poste1.secret` (ou `poste2`).
+3. **Double-cliquer sur `installer.cmd`**, taper le numéro du poste (`1` ou `2`), puis coller le secret.
+   La fenêtre doit finir par « Connexion à MULCV vérifiée ».
 
-## Profil PaperStream Capture
+Rien d'autre à installer : `bin/mulcv-depot.exe` est déjà compilé, et la CI vérifie à chaque
+modification qu'il correspond exactement aux sources de `src/`.
 
-1. **Séparation de documents** : *Code-barres*, type **QR Code**.
-2. **Nom du fichier** (*File Name Option*) : la **valeur du QR**, sans préfixe ni date.
-   Un compteur `_0001` ajouté par PaperStream est accepté.
-3. **Format** : PDF ou PDF/A, 25 Mo au plus par dossier.
-4. **Destination** : **Other App**
-   - Application Path : `C:\MULCV\mulcv-depot.exe`
-   - Parameters : `%f`
-   - Work Folder : `C:\MULCV`
+Pour essayer sans scanner : **`tester-envoi.cmd`**, glisser un PDF dans la fenêtre, puis taper
+l'identifiant d'un dossier déjà transféré (par exemple `TEST-DOS-001`).
 
-Variante : destination **Folder** vers `C:\MULCV\Sortie` et installation avec
-`-Surveillance` ; une tâche planifiée envoie alors les fichiers déposés dans ce dossier.
+## Paramétrer PaperStream Capture
 
-## Suivi
+Dans le profil de numérisation :
+
+| Réglage | Valeur |
+|---|---|
+| Séparation de documents | **Code-barres**, type **QR Code** (le QR du dossier) |
+| Nom du fichier (*File Name Option*) | **valeur du code-barres** seule, sans préfixe, date ni compteur |
+| Format | PDF ou PDF/A, 25 Mo au plus par dossier |
+| Destination | **Other App** |
+| Application Path | `C:\MULCV\mulcv-depot.exe` |
+| Parameters | `%f` |
+| Work Folder | `C:\MULCV` |
+
+Le nom du fichier **doit** être l'identifiant du dossier : `DOS-000456.pdf`. Un nom de
+compteur (`0001.pdf`) ne permet pas de savoir où ranger le document ; il est refusé et
+mis de côté. Un suffixe de compteur PaperStream (`DOS-000456_0001.pdf`) est accepté.
+
+Variante sans « Other App » : destination **Folder** vers `C:\MULCV\Sortie`, et installation
+avec `powershell -ExecutionPolicy Bypass -File install.ps1 -Poste 1 -Surveillance`.
+
+## Ce qui se passe à chaque numérisation
+
+1. PaperStream crée `DOS-000456.pdf` et lance `mulcv-depot.exe` avec ce fichier.
+2. Le programme obtient un jeton Keycloak avec le compte du poste (`mulcv-depot-poste1` ou `2`).
+3. Il envoie le PDF à MULCV avec l'identifiant `DOS-000456`.
+4. MULCV le range dans `Scan / Production / <zone> / <carton> / DOS-000456`
+   (dossier créé lors du transfert GeoArchiv) ; l'OCR prend ensuite le relais.
+5. Sur le poste :
 
 | Résultat | Emplacement |
 |---|---|
 | Déposé dans MULCV | `C:\MULCV\Envoyes` |
-| Refusé (dossier inconnu, format…) | `C:\MULCV\Erreurs` + un `.txt` avec la raison |
-| Réseau ou MULCV indisponible | reste en place ; 4 essais puis nouvel essai au prochain envoi |
+| Refusé (dossier inconnu, format…) | `C:\MULCV\Erreurs`, avec un `.txt` qui donne la raison |
+| Réseau ou MULCV indisponible | reste en place ; 4 essais, puis nouvel essai au prochain envoi |
 
-Journal : `C:\MULCV\mulcv-depot.log`. Vérification à tout moment : `C:\MULCV\mulcv-depot.exe -test`.
+Journal : `C:\MULCV\mulcv-depot.log`. Vérifier la connexion à tout moment : `C:\MULCV\mulcv-depot.exe -test`.
+
+## Les deux postes
+
+| Poste | Compte technique | Configuration |
+|---|---|---|
+| Poste 1 | `mulcv-depot-poste1` | `postes/poste-1.json` |
+| Poste 2 | `mulcv-depot-poste2` | `postes/poste-2.json` |
+
+Chaque poste a son propre compte : MULCV sait quel poste a déposé chaque document, et un
+poste perdu se révoque sans arrêter l'autre. Les comptes sont créés sur le serveur par
+`provision_intake_clients.py` (dépôt `MULCV-search-service`), et doivent être
+**Collaborateurs** du site MULCV dans Share.
+
+## Mettre à jour un poste
+
+```
+cd C:\MULCV\PaperStream
+git pull
+installer.cmd        (garder la configuration existante : répondre O)
+```
 
 ## Développement
 
 ```
-cd src
-go test ./...
-GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -o mulcv-depot.exe .
+./build.sh            # tests + reconstruction de bin/mulcv-depot.exe (Go 1.24.7)
 ```
+Commiter `bin/mulcv-depot.exe` avec les sources : la CI refuse un exécutable qui ne correspond pas.
 
 Contrat de l'API : `docs/transfer-api.md` du dépôt `MULCV-search-service`.
