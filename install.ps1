@@ -1,6 +1,12 @@
 ﻿<#
 .SYNOPSIS
-  Installe le depot PaperStream -> MULCV sur un poste de numerisation.
+  Installe ou met a jour le depot PaperStream -> MULCV sur un poste de numerisation.
+
+.DESCRIPTION
+  Cree C:\MULCV et toute son arborescence (bin, config, numerisation, journal),
+  y copie le programme, puis ecrit la configuration du poste et verifie la connexion.
+  Relancer apres un "git pull" met a jour le programme sans toucher a la configuration
+  ni aux fichiers numerises.
 
 .EXAMPLE
   installer.cmd                (double-clic : demande le numero du poste)
@@ -13,18 +19,28 @@
 #>
 param(
   [Parameter(Mandatory = $true)][ValidateSet(1, 2)][int]$Poste,
+  [string]$Destination = 'C:\MULCV',
   # Tache planifiee qui envoie ce que PaperStream depose dans numerisation\1-a-envoyer (mode "Folder").
   [switch]$Surveillance
 )
 $ErrorActionPreference = 'Stop'
-# Le depot clone est le dossier de travail : C:\MULCV si le clone a ete fait a cet endroit.
-$racine = Split-Path -Parent $MyInvocation.MyCommand.Path
-$exe = Join-Path $racine 'bin\mulcv-depot.exe'
-$modele = Join-Path $racine "config\postes\poste-$Poste.json"
-$cible = Join-Path $racine 'config\mulcv-depot.json'
-if (-not (Test-Path $exe)) { throw "bin\mulcv-depot.exe introuvable : cloner le depot complet." }
-if (-not (Test-Path $modele)) { throw "Modele du poste $Poste introuvable : $modele" }
+$kit = Join-Path (Split-Path -Parent $MyInvocation.MyCommand.Path) 'poste'
+if (-not (Test-Path (Join-Path $kit 'bin\mulcv-depot.exe'))) { throw "poste\bin\mulcv-depot.exe introuvable : cloner le depot complet." }
 
+# 1. Arborescence et programme : tout est cree s'il manque, rien de l'utilisateur n'est efface.
+foreach ($d in @('bin', 'config\postes', 'numerisation\1-a-envoyer', 'numerisation\2-envoyes', 'numerisation\3-erreurs', 'journal')) {
+  New-Item -ItemType Directory -Force -Path (Join-Path $Destination $d) | Out-Null
+}
+Get-ChildItem $kit -Recurse -File | ForEach-Object {
+  $relatif = $_.FullName.Substring($kit.Length + 1)
+  Copy-Item $_.FullName (Join-Path $Destination $relatif) -Force
+}
+$exe = Join-Path $Destination 'bin\mulcv-depot.exe'
+$cible = Join-Path $Destination 'config\mulcv-depot.json'
+$modele = Join-Path $Destination "config\postes\poste-$Poste.json"
+Write-Host "Arborescence prete dans $Destination."
+
+# 2. Configuration du poste (le secret n'est demande qu'a la premiere installation).
 $garder = $false
 if (Test-Path $cible) {
   $actuel = Get-Content $cible -Raw | ConvertFrom-Json
@@ -55,24 +71,27 @@ if (-not $garder) {
   Set-Acl -Path $cible -AclObject $acl
 }
 
+# 3. Verification de la connexion a MULCV.
 & $exe -test
 if ($LASTEXITCODE -ne 0) { throw "Le test de connexion a echoue : verifier le secret et la connexion Internet." }
 
 if ($Surveillance) {
-  $action = New-ScheduledTaskAction -Execute $exe -Argument '-watch' -WorkingDirectory $racine
+  $action = New-ScheduledTaskAction -Execute $exe -Argument '-watch' -WorkingDirectory $Destination
   $declencheur = New-ScheduledTaskTrigger -AtLogOn -User ([Security.Principal.WindowsIdentity]::GetCurrent().Name)
   $reglages = New-ScheduledTaskSettingsSet -ExecutionTimeLimit ([TimeSpan]::Zero) -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 1)
   Register-ScheduledTask -TaskName 'MULCV depot PaperStream' -Action $action -Trigger $declencheur -Settings $reglages -Force | Out-Null
   Start-ScheduledTask -TaskName 'MULCV depot PaperStream'
-  Write-Host "Surveillance active sur $racine\numerisation\1-a-envoyer."
+  Write-Host "Surveillance active sur $Destination\numerisation\1-a-envoyer."
 }
 
 Write-Host ''
-Write-Host "Poste $Poste installe. Connexion a MULCV verifiee."
+Write-Host "Poste $Poste installe dans $Destination. Connexion a MULCV verifiee."
 Write-Host ''
-Write-Host 'Dans PaperStream Capture, destination "Other App" :'
-Write-Host "  Application Path : $exe"
-Write-Host '  Parameters       : %f'
-Write-Host "  Work Folder      : $racine"
+Write-Host 'Dans PaperStream Capture :'
+Write-Host "  Dossier de sortie : $Destination\numerisation\1-a-envoyer"
+Write-Host '  Destination       : Other App'
+Write-Host "  Application Path  : $exe"
+Write-Host '  Parameters        : %f'
+Write-Host "  Work Folder       : $Destination"
 Write-Host ''
-Write-Host 'Pour un essai sans scanner : tester-envoi.cmd'
+Write-Host "Essai sans scanner : $Destination\tester-envoi.cmd"

@@ -1,9 +1,9 @@
 @echo off
-rem Installation du depot PaperStream -> MULCV. Double-cliquer, puis choisir le poste.
+rem Installe ou met a jour le depot MULCV de ce poste dans C:\MULCV. Double-cliquer.
 cd /d "%~dp0"
 echo.
-echo  Installation du depot MULCV pour PaperStream
-echo  ------------------------------------------
+echo  Installation du depot MULCV pour PaperStream (C:\MULCV)
+echo  ------------------------------------------------------
 set /p POSTE=Numero de ce poste (1 ou 2) : 
 if not "%POSTE%"=="1" if not "%POSTE%"=="2" (
   echo Numero invalide : tapez 1 ou 2.

@@ -1,6 +1,3 @@
-config/mulcv-depot.json
-numerisation/*/*
-!numerisation/*/LISEZMOI.txt
-journal/*
-!journal/LISEZMOI.txt
+poste/config/mulcv-depot.json
+poste/numerisation/*/*
 dist/

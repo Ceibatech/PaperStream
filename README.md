@@ -4,41 +4,42 @@ Dépôt automatique des documents numérisés avec **PaperStream Capture** dans 
 Le dépôt cloné **est** le dossier de travail du poste : tous les dossiers existent déjà,
 rien n'est à créer à la main.
 
-## Le dossier `C:\MULCV` après le clone
+## Installer un poste
+
+1. Cloner le dépôt **n'importe où**, par exemple dans Téléchargements :
+   ```
+   git clone https://github.com/Ceibatech/PaperStream.git
+   ```
+2. Obtenir le **secret du poste** auprès de l'administrateur, qui le lit sur le serveur :
+   `cat /opt/ceiba/keycloak/secrets/mulcv-depot-poste1.secret` (ou `poste2`).
+3. Double-cliquer sur **`installer.cmd`** (à la racine du dépôt cloné), taper `1` ou `2`,
+   coller le secret. L'installateur **crée `C:\MULCV`** et tout son contenu, puis vérifie la
+   connexion : la fenêtre doit finir par **« Connexion à MULCV vérifiée »**.
+4. Essai sans scanner : double-cliquer sur **`C:\MULCV\tester-envoi.cmd`**, glisser un PDF
+   dans la fenêtre, taper un identifiant de dossier déjà transféré (ex. `TEST-DOS-001`).
+   Le PDF arrive dans MULCV et sa copie dans `C:\MULCV\numerisation\2-envoyes`.
+
+## Ce que l'installateur crée : `C:\MULCV`
 
 ```
 C:\MULCV\
-├── installer.cmd               ← double-clic : configure ce poste (une seule fois)
 ├── tester-envoi.cmd            ← double-clic : envoie un PDF d'essai sans scanner
 ├── bin\
 │   └── mulcv-depot.exe         ← programme lancé par PaperStream
 ├── config\
-│   ├── postes\poste-1.json     ← modèles fournis
+│   ├── postes\poste-1.json     ← modèles
 │   ├── postes\poste-2.json
-│   └── mulcv-depot.json        ← créé par installer.cmd (contient le secret, jamais dans Git)
+│   └── mulcv-depot.json        ← configuration du poste, avec le secret (lisible par l'opérateur seul)
 ├── numerisation\
 │   ├── 1-a-envoyer\            ← PaperStream dépose ici les PDF
 │   ├── 2-envoyes\              ← PDF bien arrivés dans MULCV (copie locale)
 │   └── 3-erreurs\              ← PDF refusés + un .txt qui explique pourquoi
-├── journal\
-│   └── mulcv-depot.log         ← une ligne par envoi
-├── admin\                      ← réservé à l'administrateur (clients Keycloak)
-└── src\                        ← code source du programme
+└── journal\
+    └── mulcv-depot.log         ← une ligne par envoi
 ```
 
-## Installer un poste
-
-1. Cloner **dans `C:\MULCV`** (le dossier ne doit pas déjà exister) :
-   ```
-   git clone https://github.com/Ceibatech/PaperStream.git C:\MULCV
-   ```
-2. Obtenir le **secret du poste** auprès de l'administrateur, qui le lit sur le serveur :
-   `cat /opt/ceiba/keycloak/secrets/mulcv-depot-poste1.secret` (ou `poste2`).
-3. Double-cliquer sur **`C:\MULCV\installer.cmd`**, taper `1` ou `2`, coller le secret.
-   La fenêtre doit finir par **« Connexion à MULCV vérifiée »**.
-4. Essai sans scanner : double-cliquer sur **`tester-envoi.cmd`**, glisser un PDF dans la
-   fenêtre, taper un identifiant de dossier déjà transféré (ex. `TEST-DOS-001`).
-   Le PDF arrive dans MULCV et sa copie dans `numerisation\2-envoyes`.
+Le dépôt cloné, lui, contient : `installer.cmd` et `install.ps1` (l'installation), `poste\`
+(tout ce qui est copié dans `C:\MULCV`), `admin\` (comptes Keycloak) et `src\` (code source).
 
 ## Régler PaperStream Capture
 
@@ -59,7 +60,7 @@ compteur ajouté par PaperStream (`DOS-000456_0001.pdf`) est accepté.
 
 Variante si « Other App » n'est pas utilisé : destination **Folder** vers
 `C:\MULCV\numerisation\1-a-envoyer`, et installer avec la surveillance :
-`powershell -ExecutionPolicy Bypass -File C:\MULCV\install.ps1 -Poste 1 -Surveillance`.
+`powershell -ExecutionPolicy Bypass -File install.ps1 -Poste 1 -Surveillance` (depuis le dépôt cloné).
 
 ## D'où ça part, où ça arrive
 
@@ -84,18 +85,15 @@ perdu se révoque sans arrêter l'autre.
 
 ## Mettre à jour un poste
 
-```
-cd C:\MULCV
-git pull
-```
-La configuration (`config\mulcv-depot.json`) et les fichiers de `numerisation\` ne sont pas
-touchés par `git pull`.
+Dans le dépôt cloné : `git pull`, puis double-clic sur `installer.cmd` et répondre **O** pour
+garder la configuration. Le programme est remplacé ; la configuration et les fichiers de
+`numerisation\` ne sont pas touchés.
 
 ## Administration et développement
 
 - `admin\keycloak\` : définitions des comptes des postes. Ils sont créés sur le serveur par
   `provision_intake_clients.py` (dépôt `MULCV-search-service`) et doivent être
   **Collaborateurs** du site MULCV dans Share.
-- `./build.sh` : tests et reconstruction de `bin\mulcv-depot.exe` (Go 1.24.7). La CI refuse un
+- `./build.sh` : tests et reconstruction de `poste\bin\mulcv-depot.exe` (Go 1.24.7). La CI refuse un
   exécutable qui ne correspond pas exactement aux sources de `src\`.
 - Contrat de l'API : `docs/transfer-api.md` du dépôt `MULCV-search-service`.

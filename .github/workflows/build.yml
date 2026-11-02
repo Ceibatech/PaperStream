@@ -16,14 +16,14 @@ jobs:
       - name: Tests
         working-directory: src
         run: go test ./...
-      - name: bin/mulcv-depot.exe correspond exactement aux sources
+      - name: poste/bin/mulcv-depot.exe correspond exactement aux sources
         run: |
           set -euo pipefail
           (cd src && GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -buildvcs=false -ldflags="-s -w -buildid=" -o /tmp/mulcv-depot.exe .)
           expected=$(sha256sum /tmp/mulcv-depot.exe | cut -d' ' -f1)
-          actual=$(sha256sum bin/mulcv-depot.exe | cut -d' ' -f1)
+          actual=$(sha256sum poste/bin/mulcv-depot.exe | cut -d' ' -f1)
           echo "attendu $expected"; echo "fourni  $actual"
           if [ "$expected" != "$actual" ]; then
-            echo "::error::bin/mulcv-depot.exe n'est pas a jour : relancer build.sh et commiter."
+            echo "::error::poste/bin/mulcv-depot.exe n est pas a jour : relancer build.sh et commiter."
             exit 1
           fi
