@@ -80,8 +80,8 @@ Variante si « Other App » n'est pas utilisé : destination **Folder** vers
 1. PaperStream crée par exemple `C:\MULCV\numerisation\1-a-envoyer\CCM_02112026_00002.pdf` et lance `bin\mulcv-depot.exe`.
 2. Le programme s'identifie auprès de Keycloak avec le compte du poste (`mulcv-depot-poste1` ou `2`).
 3. Il envoie le PDF à MULCV, qui lit le QR de la première page : `DOS-000456`.
-4. MULCV le range dans **`Scan / Production / <zone> / <carton> / DOS-000456`**, le dossier créé
-   quand GeoArchiv a transféré le lot. L'OCR l'analyse, puis l'archiviste le valide.
+4. MULCV le range dans **`Scan / Production / <zone> / <conteneur> / <carton> / DOS-000456`**, le dossier créé
+   quand GeoArchiv a transféré le conteneur. L'OCR l'analyse, puis l'archiviste le valide.
 5. Sur le poste, le PDF passe dans `numerisation\2-envoyes`, ou dans `numerisation\3-erreurs`
    avec la raison. Si MULCV ou le réseau est indisponible, il reste dans `1-a-envoyer` et
    repart au prochain envoi.
