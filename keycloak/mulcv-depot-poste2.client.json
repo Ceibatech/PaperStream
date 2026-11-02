@@ -1,0 +1,52 @@
+{
+  "clientId": "mulcv-depot-poste2",
+  "name": "mulcv-depot-poste2",
+  "description": "Poste de numérisation PaperStream n°2 : dépôt des scans",
+  "enabled": true,
+  "protocol": "openid-connect",
+  "publicClient": false,
+  "clientAuthenticatorType": "client-secret",
+  "serviceAccountsEnabled": true,
+  "standardFlowEnabled": false,
+  "implicitFlowEnabled": false,
+  "directAccessGrantsEnabled": false,
+  "frontchannelLogout": false,
+  "attributes": {
+    "access.token.lifespan": "300"
+  },
+  "defaultClientScopes": [
+    "profile",
+    "roles"
+  ],
+  "protocolMappers": [
+    {
+      "name": "mulcv-access-token-subject-v1",
+      "protocol": "openid-connect",
+      "protocolMapper": "oidc-sub-mapper",
+      "config": {
+        "access.token.claim": "true",
+        "introspection.token.claim": "true"
+      }
+    },
+    {
+      "name": "mulcv-api-audience",
+      "protocol": "openid-connect",
+      "protocolMapper": "oidc-audience-mapper",
+      "config": {
+        "included.custom.audience": "mulcv-backend",
+        "access.token.claim": "true",
+        "id.token.claim": "false"
+      }
+    },
+    {
+      "name": "alfresco-audience",
+      "protocol": "openid-connect",
+      "protocolMapper": "oidc-audience-mapper",
+      "config": {
+        "included.client.audience": "alfresco",
+        "access.token.claim": "true",
+        "id.token.claim": "false"
+      }
+    }
+  ]
+}

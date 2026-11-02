@@ -1,0 +1,9 @@
+{
+  "tokenUrl": "https://mulcv-kc-dev.ceiba-analytics.com/auth/realms/mulcv/protocol/openid-connect/token",
+  "clientId": "mulcv-depot-poste2",
+  "clientSecret": "RENSEIGNE PAR install.ps1",
+  "apiBase": "https://mulcv-dev.ceiba-analytics.com/api/v1",
+  "sentDir": "C:\\MULCV\\Envoyes",
+  "errorDir": "C:\\MULCV\\Erreurs",
+  "logFile": "C:\\MULCV\\mulcv-depot.log"
+}
