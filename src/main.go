@@ -1,8 +1,10 @@
 // mulcv-depot envoie les fichiers produits par PaperStream Capture vers MULCV.
 //
-// Chaque fichier porte en nom l'identifiant GeoArchiv du dossier (valeur du QR lue
-// par PaperStream). Le backend MULCV retrouve ce dossier et y dépose le fichier ;
-// le service OCR du dossier Scan prend ensuite le relais.
+// MULCV lit lui-même les QR collés sur les cartons et les dossiers : la page du carton
+// ouvre le carton pour ce poste, le QR du dossier désigne le dossier où ranger le fichier.
+// Aucun réglage de nom de fichier n'est nécessaire dans PaperStream ; si le nom est
+// exactement un identifiant de dossier, il sert seulement de repli quand aucun QR n'est lisible.
+// Les fichiers sont envoyés dans l'ordre de leur nom (ordre de numérisation).
 //
 // Arborescence attendue (le dépôt Git cloné dans C:\MULCV) :
 //
@@ -202,11 +204,12 @@ func accepted(name string) bool {
 func process(path string) bool {
 	base := filepath.Base(path)
 	stem := strings.TrimSuffix(base, filepath.Ext(base))
-	match := pattern.FindStringSubmatch(stem)
-	if match == nil || len(match) < 2 || match[1] == "" {
-		return reject(path, "le nom du fichier ne contient pas d'identifiant de dossier")
+	// Indice facultatif : le nom sans le compteur PaperStream (_0001). MULCV l'ignore s'il
+	// ne correspond pas exactement à un dossier transféré.
+	hint := ""
+	if match := pattern.FindStringSubmatch(stem); len(match) > 1 {
+		hint = match[1]
 	}
-	dossierID := match[1]
 	info, err := os.Stat(path)
 	if err != nil {
 		log.Printf("%s : %v", base, err)
@@ -217,10 +220,10 @@ func process(path string) bool {
 	}
 	var last error
 	for attempt := 1; attempt <= 4; attempt++ {
-		status, body, err := send(path, dossierID)
+		status, body, err := send(path, hint)
 		switch {
-		case err == nil && status == http.StatusCreated:
-			log.Printf("%s déposé dans le dossier %s", base, dossierID)
+		case err == nil && (status == http.StatusCreated || status == http.StatusOK):
+			log.Printf("%s : %s", base, outcome(body))
 			return move(path, cfg.SentDir)
 		case err == nil && status == http.StatusUnauthorized:
 			token = "" // jeton expiré : on en redemande un
@@ -239,6 +242,28 @@ func process(path string) bool {
 	return false
 }
 
+// outcome résume la réponse de MULCV pour le journal.
+func outcome(body []byte) string {
+	var r struct {
+		Kind         string `json:"kind"`
+		CartonUID    string `json:"cartonUid"`
+		DossierID    string `json:"dossierId"`
+		Name         string `json:"name"`
+		IdentifiedBy string `json:"identifiedBy"`
+	}
+	if json.Unmarshal(body, &r) != nil {
+		return "accepté par MULCV"
+	}
+	if r.Kind == "carton" {
+		return "page du carton " + r.CartonUID + " : carton ouvert, les dossiers suivants y seront rangés"
+	}
+	how := "QR"
+	if r.IdentifiedBy == "nom" {
+		how = "nom du fichier"
+	}
+	return fmt.Sprintf("déposé dans le dossier %s (carton %s, reconnu par %s) sous %s", r.DossierID, r.CartonUID, how, r.Name)
+}
+
 func send(path, dossierID string) (int, []byte, error) {
 	bearer, err := accessToken()
 	if err != nil {
@@ -251,8 +276,10 @@ func send(path, dossierID string) (int, []byte, error) {
 	defer file.Close()
 	var body bytes.Buffer
 	form := multipart.NewWriter(&body)
-	if err := form.WriteField("dossierId", dossierID); err != nil {
-		return 0, nil, err
+	if dossierID != "" {
+		if err := form.WriteField("dossierId", dossierID); err != nil {
+			return 0, nil, err
+		}
 	}
 	part, err := form.CreateFormFile("file", filepath.Base(path))
 	if err != nil {

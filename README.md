@@ -16,7 +16,8 @@ rien n'est à créer à la main.
    coller le secret. L'installateur **crée `C:\MULCV`** et tout son contenu, puis vérifie la
    connexion : la fenêtre doit finir par **« Connexion à MULCV vérifiée »**.
 4. Essai sans scanner : double-cliquer sur **`C:\MULCV\tester-envoi.cmd`**, glisser un PDF
-   dans la fenêtre, taper un identifiant de dossier déjà transféré (ex. `TEST-DOS-001`).
+   dans la fenêtre. S'il porte un QR de dossier transféré, appuyer sur Entrée : MULCV le lit.
+   Sans QR, taper l'identifiant d'un dossier déjà transféré (ex. `TEST-DOS-001`).
    Le PDF arrive dans MULCV et sa copie dans `C:\MULCV\numerisation\2-envoyes`.
 
 ## Ce que l'installateur crée : `C:\MULCV`
@@ -43,10 +44,14 @@ Le dépôt cloné, lui, contient : `installer.cmd` et `install.ps1` (l'installat
 
 ## Régler PaperStream Capture
 
+**Aucun nom de fichier à régler.** MULCV lit lui-même les QR déjà collés sur les cartons et
+les dossiers (ceux générés par GeoArchiv) et range chaque PDF dans le bon dossier.
+
 | Réglage du profil | Valeur |
 |---|---|
-| Séparation de documents | **Code-barres**, type **QR Code** (QR collé sur chaque dossier) |
-| Nom du fichier | **valeur du QR** uniquement (ex. `DOS-000456`), sans préfixe ni date |
+| Séparation de documents | **Code-barres**, type **QR Code** |
+| Page du code-barres | **la conserver** (ne pas supprimer la page séparatrice) : MULCV en a besoin |
+| Nom du fichier | celui proposé par PaperStream (`CCM_…`, compteur…), peu importe |
 | Format | PDF ou PDF/A, 25 Mo au plus par dossier |
 | Dossier de sortie | `C:\MULCV\numerisation\1-a-envoyer` |
 | Destination | **Other App** |
@@ -54,9 +59,17 @@ Le dépôt cloné, lui, contient : `installer.cmd` et `install.ps1` (l'installat
 | Parameters | `%f` |
 | Work Folder | `C:\MULCV` |
 
-**Le nom du fichier doit être l'identifiant du dossier** : c'est lui qui dit à MULCV où ranger
-le PDF. Un nom de compteur (`0001.pdf`) est refusé et part dans `3-erreurs`. Un suffixe de
-compteur ajouté par PaperStream (`DOS-000456_0001.pdf`) est accepté.
+### Ordre de numérisation
+
+1. **La fiche du carton** (avec le QR du carton) : elle « ouvre » le carton pour ce poste.
+   Rien n'est déposé ; le fichier part dans `2-envoyes` et le journal indique le carton ouvert.
+2. **Chaque dossier du carton**, le QR du dossier sur sa **première page**. PaperStream coupe
+   un nouveau document à chaque QR ; MULCV range chaque PDF dans son dossier.
+
+Double contrôle : un dossier qui n'appartient pas au carton ouvert est refusé (il part dans
+`3-erreurs` avec la raison) au lieu d'être mal rangé. Un document sans QR lisible est refusé
+de la même façon : vérifier l'étiquette, puis renumériser. Le carton reste ouvert 4 h, ou
+jusqu'à la fiche du carton suivant. Chaque poste a son propre carton ouvert.
 
 Variante si « Other App » n'est pas utilisé : destination **Folder** vers
 `C:\MULCV\numerisation\1-a-envoyer`, et installer avec la surveillance :
@@ -64,9 +77,9 @@ Variante si « Other App » n'est pas utilisé : destination **Folder** vers
 
 ## D'où ça part, où ça arrive
 
-1. PaperStream crée `C:\MULCV\numerisation\1-a-envoyer\DOS-000456.pdf` et lance `bin\mulcv-depot.exe`.
+1. PaperStream crée par exemple `C:\MULCV\numerisation\1-a-envoyer\CCM_02112026_00002.pdf` et lance `bin\mulcv-depot.exe`.
 2. Le programme s'identifie auprès de Keycloak avec le compte du poste (`mulcv-depot-poste1` ou `2`).
-3. Il envoie le PDF à MULCV avec l'identifiant `DOS-000456`.
+3. Il envoie le PDF à MULCV, qui lit le QR de la première page : `DOS-000456`.
 4. MULCV le range dans **`Scan / Production / <zone> / <carton> / DOS-000456`**, le dossier créé
    quand GeoArchiv a transféré le lot. L'OCR l'analyse, puis l'archiviste le valide.
 5. Sur le poste, le PDF passe dans `numerisation\2-envoyes`, ou dans `numerisation\3-erreurs`

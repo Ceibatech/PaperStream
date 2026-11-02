@@ -105,11 +105,50 @@ func TestAnOutageKeepsTheFileForALaterTry(t *testing.T) {
 	}
 }
 
-func TestAFileWithoutAnIdIsNeverSent(t *testing.T) {
-	dir := setup(t, func(w http.ResponseWriter, r *http.Request) { t.Fatal("aucun appel attendu") })
-	process(scan(t, dir, "-scan.pdf"))
-	if _, err := os.Stat(filepath.Join(cfg.ErrorDir, "-scan.pdf.txt")); err != nil {
-		t.Fatal("le fichier doit être écarté")
+func TestAnyPaperStreamNameIsSentAndMulcvReadsTheQr(t *testing.T) {
+	var hints []string
+	var present []bool
+	dir := setup(t, func(w http.ResponseWriter, r *http.Request) {
+		if tokenOr(w, r) {
+			return
+		}
+		r.ParseMultipartForm(1 << 20)
+		_, ok := r.MultipartForm.Value["dossierId"]
+		present = append(present, ok)
+		hints = append(hints, r.FormValue("dossierId"))
+		if strings.Contains(r.MultipartForm.File["file"][0].Filename, "00001") {
+			io.WriteString(w, `{"kind":"carton","cartonUid":"CG1"}`) // 200 : page du carton
+			return
+		}
+		w.WriteHeader(201)
+		io.WriteString(w, `{"kind":"dossier","cartonUid":"CG1","dossierId":"DOS-1","name":"DOS-1-x.pdf","identifiedBy":"qr"}`)
+	})
+	for _, name := range []string{"CCM_02112026_00001.pdf", "CCM 02-11 (2).pdf", "-scan.pdf"} {
+		if !process(scan(t, dir, name)) {
+			t.Fatalf("%s doit être accepté", name)
+		}
+		if _, err := os.Stat(filepath.Join(cfg.SentDir, name)); err != nil {
+			t.Fatalf("%s doit être archivé", name)
+		}
+	}
+	if hints[0] != "CCM_02112026" || present[1] || present[2] {
+		t.Fatalf("indices envoyés : %q %v", hints, present)
+	}
+}
+
+func TestAScanWithoutReadableQrIsSetAside(t *testing.T) {
+	dir := setup(t, func(w http.ResponseWriter, r *http.Request) {
+		if tokenOr(w, r) {
+			return
+		}
+		w.WriteHeader(422)
+		io.WriteString(w, `{"message":"Aucun QR de dossier transféré lisible"}`)
+	})
+	if process(scan(t, dir, "0001.pdf")) {
+		t.Fatal("un refus ne doit pas être compté comme envoyé")
+	}
+	if note, _ := os.ReadFile(filepath.Join(cfg.ErrorDir, "0001.pdf.txt")); !strings.Contains(string(note), "QR") {
+		t.Fatalf("raison absente : %q", note)
 	}
 }
 
