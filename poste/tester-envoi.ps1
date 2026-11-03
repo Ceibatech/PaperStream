@@ -16,7 +16,17 @@ $racine = Split-Path -Parent $MyInvocation.MyCommand.Path
 $exe = Join-Path $racine 'bin\mulcv-depot.exe'
 if (-not (Test-Path (Join-Path $racine 'config\mulcv-depot.json'))) { throw "Le poste n'est pas installe : lancer d'abord installer.cmd" }
 $Fichier = $Fichier.Trim().Trim('"')
-if (-not (Test-Path $Fichier)) { throw "Fichier introuvable : $Fichier" }
+# Accepte aussi une adresse file:///C:/... (glisser depuis un navigateur) et un chemin relatif
+# a C:\MULCV ou a C:\MULCV\numerisation (ex. 3-erreurs\0001.pdf).
+if ($Fichier -match '^file:') { $Fichier = ([Uri]$Fichier).LocalPath }
+if (-not (Test-Path -LiteralPath $Fichier)) {
+  foreach ($base in @($racine, (Join-Path $racine 'numerisation'))) {
+    $essai = Join-Path $base $Fichier
+    if (Test-Path -LiteralPath $essai) { $Fichier = $essai; break }
+  }
+}
+if (-not (Test-Path -LiteralPath $Fichier)) { throw "Fichier introuvable : $Fichier" }
+$Fichier = (Resolve-Path -LiteralPath $Fichier).Path
 $extension = [IO.Path]::GetExtension($Fichier).ToLower()
 if ($Dossier) { $nom = $Dossier + $extension } else { $nom = 'TEST_' + (Get-Date -Format 'yyyyMMdd_HHmmss') + $extension }
 $copie = Join-Path $racine ('numerisation\1-a-envoyer\' + $nom)
