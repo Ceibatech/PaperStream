@@ -1,4 +1,8 @@
 Fichiers refuses par MULCV. Chaque fichier est accompagne d'un .txt qui donne la raison.
-Causes habituelles : nom du fichier qui n'est pas l'identifiant du dossier (0001.pdf),
-dossier pas encore transfere par GeoArchiv, format autre que PDF/JPEG/PNG, fichier > 25 Mo.
-Apres correction, renommer le fichier si besoin et le renvoyer avec tester-envoi.cmd.
+Causes habituelles :
+- aucun QR detecte : l'etiquette du dossier n'est pas sur la 1re page, est coupee ou illisible ;
+- QR inconnu de MULCV : GeoArchiv n'a pas encore verse le conteneur de ce dossier ;
+- dossier qui n'appartient pas au carton scanne juste avant (double controle) ;
+- format autre que PDF/JPEG/PNG, ou fichier de plus de 25 Mo.
+Apres correction, renumeriser le dossier avec son etiquette en 1re page,
+ou renvoyer le fichier avec tester-envoi.cmd.
