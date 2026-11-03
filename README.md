@@ -61,21 +61,27 @@ les dossiers (ceux générés par GeoArchiv) et range chaque PDF dans le bon dos
 
 ### Ordre de numérisation
 
-1. **La fiche du carton** (avec le QR du carton) : elle « ouvre » le carton pour ce poste.
-   Rien n'est déposé ; le fichier part dans `2-envoyes` et le journal indique le carton ouvert.
-2. **Chaque dossier du carton**, le QR du dossier sur sa **première page**. PaperStream coupe
-   un nouveau document à chaque QR ; MULCV range chaque PDF dans son dossier.
+```
+QR CARTON   2010-KOU-0201          ← fiche du carton (conseillée)
+QR DOSSIER  2010-KOU-0201-001      ← 1re feuille du dossier
+  pièces du dossier…
+QR DOSSIER  2010-KOU-0201-002
+  pièces du dossier…
+```
 
-**Toutes les pages qui suivent l'étiquette d'un dossier lui appartiennent, jusqu'à l'étiquette
-suivante.** Si PaperStream coupe un dossier en plusieurs fichiers (un par mode d'image : noir et
-blanc / couleur), les fichiers sans QR envoyés juste après sont rattachés au même dossier
-(nommés `…-suite.pdf`). Cette suite s'arrête à la fiche d'un carton, à un QR inconnu, ou après
-15 minutes sans envoi. Les envois du poste partent un par un, dans l'ordre du scan.
+**MULCV lit le QR de chaque page et découpe lui-même** : toutes les pages qui suivent
+l'étiquette d'un dossier lui appartiennent, jusqu'à l'étiquette suivante ou la fiche d'un
+carton. Un carton entier peut donc arriver en un seul fichier : un PDF est rangé par dossier.
+Les versos blancs des fiches sont ignorés.
 
-Double contrôle : un dossier qui n'appartient pas au carton ouvert est refusé (il part dans
-`3-erreurs` avec la raison) au lieu d'être mal rangé. Un document sans QR lisible est refusé
-de la même façon : vérifier l'étiquette, puis renumériser. Le carton reste ouvert 4 h, ou
-jusqu'à la fiche du carton suivant. Chaque poste a son propre carton ouvert.
+Le fichier entier est refusé (dans `3-erreurs`, avec le numéro de page dans le `.txt`) si une
+étiquette est inconnue de MULCV, si des pages précèdent la première étiquette, ou si un
+dossier n'appartient pas au carton scanné. Rien n'est alors déposé : corriger la pile et la
+renumériser.
+
+**Mode de couleur fixe obligatoire** (couleur ou niveaux de gris). En « couleur automatique »
+avec un fichier par mode d'image, PaperStream regroupe les pages par couleur et perd leur
+ordre : impossible de savoir à quel dossier elles appartiennent.
 
 Variante si « Other App » n'est pas utilisé : destination **Folder** vers
 `C:\MULCV\numerisation\1-a-envoyer`, et installer avec la surveillance :

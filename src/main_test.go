@@ -136,6 +136,18 @@ func TestAnyPaperStreamNameIsSentAndMulcvReadsTheQr(t *testing.T) {
 	}
 }
 
+func TestEachFiledDossierIsLogged(t *testing.T) {
+	got := outcome([]byte(`{"kind":"dossier","cartonUid":"C1","documents":[{"dossierId":"D1","cartonUid":"C1","name":"D1-x.pdf","identifiedBy":"qr","pages":"3-5"},{"dossierId":"D2","cartonUid":"C1","name":"D2-x.pdf","identifiedBy":"qr","pages":"6-8"}]}`))
+	for _, want := range []string{"2 dossier(s)", "D1 (carton C1, QR, pages 3-5)", "D2 (carton C1, QR, pages 6-8)"} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("%q absent de %q", want, got)
+		}
+	}
+	if !strings.Contains(outcome([]byte(`{"kind":"dossier","dossierId":"D9","identifiedBy":"suite"}`)), "D9") {
+		t.Fatal("ancienne réponse")
+	}
+}
+
 func TestSendsAreSerializedOnTheStation(t *testing.T) {
 	dir := t.TempDir()
 	cfg.LogFile = filepath.Join(dir, "mulcv-depot.log")

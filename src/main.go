@@ -271,14 +271,20 @@ func lock() func() {
 	return func() {}
 }
 
-// outcome résume la réponse de MULCV pour le journal.
+// outcome résume la réponse de MULCV pour le journal : un dossier par ligne.
 func outcome(body []byte) string {
-	var r struct {
-		Kind         string `json:"kind"`
-		CartonUID    string `json:"cartonUid"`
+	type document struct {
 		DossierID    string `json:"dossierId"`
+		CartonUID    string `json:"cartonUid"`
 		Name         string `json:"name"`
 		IdentifiedBy string `json:"identifiedBy"`
+		Pages        string `json:"pages"`
+	}
+	var r struct {
+		Kind      string     `json:"kind"`
+		CartonUID string     `json:"cartonUid"`
+		Documents []document `json:"documents"`
+		document
 	}
 	if json.Unmarshal(body, &r) != nil {
 		return "accepté par MULCV"
@@ -286,14 +292,25 @@ func outcome(body []byte) string {
 	if r.Kind == "carton" {
 		return "page du carton " + r.CartonUID + " : carton ouvert, les dossiers suivants y seront rangés"
 	}
-	how := "QR"
-	switch r.IdentifiedBy {
-	case "nom":
-		how = "nom du fichier"
-	case "suite":
-		how = "suite du dossier précédent (pages sans QR)"
+	if len(r.Documents) == 0 && r.DossierID != "" {
+		r.Documents = []document{r.document}
 	}
-	return fmt.Sprintf("déposé dans le dossier %s (carton %s, reconnu par %s) sous %s", r.DossierID, r.CartonUID, how, r.Name)
+	lines := []string{fmt.Sprintf("%d dossier(s) déposé(s)", len(r.Documents))}
+	for _, d := range r.Documents {
+		how := "QR"
+		switch d.IdentifiedBy {
+		case "nom":
+			how = "nom du fichier"
+		case "suite":
+			how = "suite du dossier précédent"
+		}
+		pages := ""
+		if d.Pages != "" {
+			pages = ", pages " + d.Pages
+		}
+		lines = append(lines, fmt.Sprintf("  - %s (carton %s, %s%s) sous %s", d.DossierID, d.CartonUID, how, pages, d.Name))
+	}
+	return strings.Join(lines, "\n")
 }
 
 func send(path, dossierID string) (int, []byte, error) {
