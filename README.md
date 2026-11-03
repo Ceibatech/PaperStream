@@ -66,8 +66,15 @@ QR CARTON   2010-KOU-0201          ← fiche du carton (conseillée)
 QR DOSSIER  2010-KOU-0201-001      ← 1re feuille du dossier
   pièces du dossier…
 QR DOSSIER  2010-KOU-0201-002
-  pièces du dossier…
+  pièce 1
+SÉPARATEUR  MULCV-PIECE            ← entre deux pièces d'un même dossier
+  pièce 2
 ```
+
+**Pièces** : la feuille « séparateur de pièce » (QR `MULCV-PIECE`, réutilisable) se place
+entre deux pièces. Chaque pièce est rangée à part, numérotée `…-P01-…`, `…-P02-…` à la suite
+des pièces déjà présentes : le nombre de pièces d'un dossier se lit dans Share. Sans
+séparateur, tout le dossier forme une seule pièce.
 
 **MULCV lit le QR de chaque page et découpe lui-même** : toutes les pages qui suivent
 l'étiquette d'un dossier lui appartiennent, jusqu'à l'étiquette suivante ou la fiche d'un

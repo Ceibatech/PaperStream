@@ -143,6 +143,12 @@ func TestEachFiledDossierIsLogged(t *testing.T) {
 			t.Fatalf("%q absent de %q", want, got)
 		}
 	}
+	if !strings.Contains(outcome([]byte(`{"kind":"dossier","documents":[{"dossierId":"D3","piece":2,"identifiedBy":"qr"}]}`)), "D3 pièce 2,") {
+		t.Fatal("numéro de pièce absent")
+	}
+	if !strings.Contains(outcome([]byte(`{"kind":"piece"}`)), "séparatrice") {
+		t.Fatal("feuille séparatrice")
+	}
 	if !strings.Contains(outcome([]byte(`{"kind":"dossier","dossierId":"D9","identifiedBy":"suite"}`)), "D9") {
 		t.Fatal("ancienne réponse")
 	}

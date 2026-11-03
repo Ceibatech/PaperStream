@@ -279,6 +279,7 @@ func outcome(body []byte) string {
 		Name         string `json:"name"`
 		IdentifiedBy string `json:"identifiedBy"`
 		Pages        string `json:"pages"`
+		Piece        int    `json:"piece"`
 	}
 	var r struct {
 		Kind      string     `json:"kind"`
@@ -288,6 +289,9 @@ func outcome(body []byte) string {
 	}
 	if json.Unmarshal(body, &r) != nil {
 		return "accepté par MULCV"
+	}
+	if r.Kind == "piece" {
+		return "feuille séparatrice : la pièce suivante du dossier en cours commence au fichier suivant"
 	}
 	if r.Kind == "carton" {
 		return "page du carton " + r.CartonUID + " : carton ouvert, les dossiers suivants y seront rangés"
@@ -303,12 +307,18 @@ func outcome(body []byte) string {
 			how = "nom du fichier"
 		case "suite":
 			how = "suite du dossier précédent"
+		case "separateur":
+			how = "pièce annoncée par un séparateur"
 		}
 		pages := ""
 		if d.Pages != "" {
 			pages = ", pages " + d.Pages
 		}
-		lines = append(lines, fmt.Sprintf("  - %s (carton %s, %s%s) sous %s", d.DossierID, d.CartonUID, how, pages, d.Name))
+		piece := ""
+		if d.Piece > 0 {
+			piece = fmt.Sprintf(" pièce %d,", d.Piece)
+		}
+		lines = append(lines, fmt.Sprintf("  - %s%s (carton %s, %s%s) sous %s", d.DossierID, piece, d.CartonUID, how, pages, d.Name))
 	}
 	return strings.Join(lines, "\n")
 }
