@@ -83,6 +83,10 @@ func main() {
 		if flag.NArg() == 0 {
 			fail("Indiquez un fichier, -watch <dossier> ou -test.")
 		}
+		// Un seul envoi à la fois sur le poste : les fichiers d'un même dossier partent dans
+		// l'ordre où PaperStream les a produits (MULCV rattache une suite sans QR au dossier précédent).
+		unlock := lock()
+		defer unlock()
 		failed := 0
 		for _, path := range flag.Args() {
 			if !process(path) {
@@ -90,6 +94,7 @@ func main() {
 			}
 		}
 		if failed > 0 {
+			unlock()
 			os.Exit(1)
 		}
 	}
@@ -242,6 +247,30 @@ func process(path string) bool {
 	return false
 }
 
+// lock attend que l'envoi précédent du poste soit fini. Un verrou de plus de 10 minutes
+// (programme interrompu) est considéré comme abandonné.
+func lock() func() {
+	path := filepath.Join(filepath.Dir(cfg.LogFile), "envoi.lock")
+	for start := time.Now(); time.Since(start) < 15*time.Minute; time.Sleep(200 * time.Millisecond) {
+		file, err := os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o640)
+		if err == nil {
+			file.Close()
+			var once bool
+			return func() {
+				if !once {
+					once = true
+					os.Remove(path)
+				}
+			}
+		}
+		if info, statErr := os.Stat(path); statErr == nil && time.Since(info.ModTime()) > 10*time.Minute {
+			os.Remove(path)
+		}
+	}
+	log.Printf("Verrou d'envoi toujours pris après 15 minutes : envoi sans attendre")
+	return func() {}
+}
+
 // outcome résume la réponse de MULCV pour le journal.
 func outcome(body []byte) string {
 	var r struct {
@@ -258,8 +287,11 @@ func outcome(body []byte) string {
 		return "page du carton " + r.CartonUID + " : carton ouvert, les dossiers suivants y seront rangés"
 	}
 	how := "QR"
-	if r.IdentifiedBy == "nom" {
+	switch r.IdentifiedBy {
+	case "nom":
 		how = "nom du fichier"
+	case "suite":
+		how = "suite du dossier précédent (pages sans QR)"
 	}
 	return fmt.Sprintf("déposé dans le dossier %s (carton %s, reconnu par %s) sous %s", r.DossierID, r.CartonUID, how, r.Name)
 }

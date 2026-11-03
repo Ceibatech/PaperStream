@@ -136,6 +136,28 @@ func TestAnyPaperStreamNameIsSentAndMulcvReadsTheQr(t *testing.T) {
 	}
 }
 
+func TestSendsAreSerializedOnTheStation(t *testing.T) {
+	dir := t.TempDir()
+	cfg.LogFile = filepath.Join(dir, "mulcv-depot.log")
+	unlock := lock()
+	released := make(chan time.Time, 1)
+	go func() {
+		second := lock()
+		released <- time.Now()
+		second()
+	}()
+	time.Sleep(400 * time.Millisecond)
+	before := time.Now()
+	unlock()
+	unlock() // sans effet la seconde fois
+	if at := <-released; at.Before(before) {
+		t.Fatal("le second envoi doit attendre la fin du premier")
+	}
+	if _, err := os.Stat(filepath.Join(dir, "envoi.lock")); !os.IsNotExist(err) {
+		t.Fatal("le verrou doit être libéré")
+	}
+}
+
 func TestAScanWithoutReadableQrIsSetAside(t *testing.T) {
 	dir := setup(t, func(w http.ResponseWriter, r *http.Request) {
 		if tokenOr(w, r) {

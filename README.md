@@ -66,6 +66,12 @@ les dossiers (ceux générés par GeoArchiv) et range chaque PDF dans le bon dos
 2. **Chaque dossier du carton**, le QR du dossier sur sa **première page**. PaperStream coupe
    un nouveau document à chaque QR ; MULCV range chaque PDF dans son dossier.
 
+**Toutes les pages qui suivent l'étiquette d'un dossier lui appartiennent, jusqu'à l'étiquette
+suivante.** Si PaperStream coupe un dossier en plusieurs fichiers (un par mode d'image : noir et
+blanc / couleur), les fichiers sans QR envoyés juste après sont rattachés au même dossier
+(nommés `…-suite.pdf`). Cette suite s'arrête à la fiche d'un carton, à un QR inconnu, ou après
+15 minutes sans envoi. Les envois du poste partent un par un, dans l'ordre du scan.
+
 Double contrôle : un dossier qui n'appartient pas au carton ouvert est refusé (il part dans
 `3-erreurs` avec la raison) au lieu d'être mal rangé. Un document sans QR lisible est refusé
 de la même façon : vérifier l'étiquette, puis renumériser. Le carton reste ouvert 4 h, ou
