@@ -146,6 +146,9 @@ func TestEachFiledDossierIsLogged(t *testing.T) {
 	if !strings.Contains(outcome([]byte(`{"kind":"dossier","documents":[{"dossierId":"D3","piece":2,"identifiedBy":"qr"}]}`)), "D3 pièce 2,") {
 		t.Fatal("numéro de pièce absent")
 	}
+	if !strings.Contains(outcome([]byte(`{"kind":"etiquette","dossierId":"D4"}`)), "étiquette du dossier D4") {
+		t.Fatal("étiquette seule")
+	}
 	if !strings.Contains(outcome([]byte(`{"kind":"piece"}`)), "séparatrice") {
 		t.Fatal("feuille séparatrice")
 	}

@@ -293,6 +293,9 @@ func outcome(body []byte) string {
 	if r.Kind == "piece" {
 		return "feuille séparatrice : la pièce suivante du dossier en cours commence au fichier suivant"
 	}
+	if r.Kind == "etiquette" {
+		return "étiquette du dossier " + r.DossierID + " : les pages suivantes y seront rangées (l'étiquette n'est pas archivée)"
+	}
 	if r.Kind == "carton" {
 		return "page du carton " + r.CartonUID + " : carton ouvert, les dossiers suivants y seront rangés"
 	}
